@@ -23,11 +23,13 @@ def convert_dataset(args):
         xmax = trench["xmax"]
         ymax = trench["ymax"]
 
-        prompt = "{'messages': [{'role': 'system', 'content': 'You are a professional anomaly detection and classification tool that detects objects that could prevent an excavator from digging.'}, {'role': 'user', 'content': '<image>This is an image of a trench that has been dug by an excavator. Does the trench contain any objects that could hinder excavation? Common examples of anomalies are pipes, cables, wires, tools, large stones and wooden planks. Provide only the english names of the objects that you detect in the trench as a list separated by commas. If you only see objects like a trench, dirt, gravel, part of an excavator or a whole excavator, you ignore them and return an empty list: [].'}, {'role': 'assistant', 'content': str(anomalies)}], 'images': [img_id]}"
+        prompt = "{'messages': [{'role': 'system', 'content': 'You are a professional anomaly detection and classification tool that detects objects that could prevent an excavator from digging.'}, {'role': 'user', 'content': '<image>This is an image of a trench that has been dug by an excavator. Does the trench contain any objects that could hinder excavation? Common examples of anomalies are pipes, cables, wires, tools, large stones and wooden planks. Provide only the english names of the objects that you detect in the trench as a list separated by commas. If you only see objects like a trench, dirt, gravel, part of an excavator or a whole excavator, you ignore them and return an empty list: [].'}, {'role': 'assistant', 'content': " + str(anomalies) + "}], 'images': ['" + img_id+ "']}"
 
         out += prompt + "\n"
 
-    json.dump(out, open(Path(output_dir).parent / "ann_new.json", "w"))
+    with open(Path(output_dir).parent / "ann_new.jsonl", "w") as f:
+        f.write(out)
+    # json.dump(out, open(Path(output_dir).parent / "ann_new.json", "w"))
 
 
 
