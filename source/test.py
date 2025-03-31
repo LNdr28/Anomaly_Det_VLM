@@ -1,75 +1,70 @@
+import json
+import os
+
 import torch
 from swift import Swift, Seq2SeqTrainer, Seq2SeqTrainingArguments
 from swift.llm import get_model_tokenizer, get_template, DatasetMeta, register_dataset, load_dataset, \
     EncodePreprocessor, PtEngine, InferRequest, RequestConfig
 
+import evaluate
+from source.train import train
+
 dataset_path = "/mnt/2tb-1/louis/data/ImageDataset/ann_new.jsonl"
+dataset_orig_file = "/mnt/2tb-1/louis/data/ImageDataset/annotations.json"
+
 output_dir = "/home/louis/workspace/Anomaly_Det_VLM/out"
 dataset_id = "gravis-excavation"
-model_id = "deepseek-ai/deepseek-vl2-tiny"
+
+# os.environ["HF_HOME"] = "/mnt/2tb-2/VLM_models"
+# os.environ["MODELSCOPE_CACHE"] = "/mnt/2tb-2/VLM_models"
+
+
+# model_id = "deepseek-ai/deepseek-vl2-tiny"
+# model_id = "deepseek-ai/deepseek-vl2-small"
+# model_id = "deepseek-ai/deepseek-vl2"
+
+# model_id = "Qwen/Qwen2-VL-2B-Instruct"
+# model_id = "Qwen/Qwen2-VL-7B-Instruct"
 # model_id = "Qwen/Qwen2.5-VL-3B-Instruct"
+# model_id = "Qwen/Qwen2.5-VL-7B-Instruct"
+# model_id = "Qwen/Qwen2.5-VL-32B-Instruct"
+model_id = "Qwen/Qwen2.5-VL-72B-Instruct"
+# model_id = "Qwen/Qwen2.5-VL-3B-Instruct-AWQ"   # todo
+# model_id = "Qwen/Qwen2.5-VL-7B-Instruct-AWQ"  # todo
+
 # model_id = "meta-llama/Llama-3.2-1B-Instruct"
-
-def train():
-    num_proc = 1
-    data_seed = 42
-
-    # Retrieve the model and template, and add a trainable LoRA module
-    model, tokenizer = get_model_tokenizer(model_id, use_hf=True)
-    template = get_template(model.model_meta.template, tokenizer, ...)
-
-    # Download and load the dataset, and encode the text into tokens
-    train_dataset, val_dataset = load_dataset(dataset_path)
-    train_dataset = EncodePreprocessor(template=template)(train_dataset, num_proc=num_proc)
-    val_dataset = EncodePreprocessor(template=template)(val_dataset, num_proc=num_proc)
-
-    training_args = Seq2SeqTrainingArguments(
-        output_dir=output_dir,
-        learning_rate=1e-4,
-        per_device_train_batch_size=1,
-        per_device_eval_batch_size=1,
-        gradient_checkpointing=True,
-        weight_decay=0.1,
-        lr_scheduler_type='cosine',
-        warmup_ratio=0.05,
-        report_to=['tensorboard'],
-        logging_first_step=True,
-        save_strategy='steps',
-        save_steps=50,
-        eval_strategy='steps',
-        eval_steps=50,
-        gradient_accumulation_steps=16,
-        num_train_epochs=1,
-        metric_for_best_model='loss',
-        save_total_limit=5,
-        logging_steps=5,
-        dataloader_num_workers=1,
-        data_seed=data_seed
-    )
-
-    # Train the model
-    trainer = Seq2SeqTrainer(
-        model=model,
-        args=training_args,
-        data_collator=template.data_collator,
-        train_dataset=train_dataset,
-        eval_dataset=val_dataset,
-        template=template,
-    )
-    trainer.train()
+# model_id = "meta-llama/Llama-3.2-3B-Instruct"
+# model_id = "meta-llama/Llama-3.3-70B-Instruct"
+# model_id = "meta-llama/Llama-3.2-11B-Vision-Instruct"
+# model_id = "meta-llama/Llama-3.2-90B-Vision-Instruct"
 
 
 def infer():
+
     max_new_tokens = 2048
-    temperature = 0
+    temperature = 0.3
     # Perform inference using the native PyTorch engine
-    engine = PtEngine(model_id, max_batch_size=2, use_hf=True)
+
+    # device_map = {"0": "cuda:1"}
+
+    if "meta-llama/Llama-3.2" in model_id:
+        engine = PtEngine(model_id, max_batch_size=2, use_hf=True, torch_dtype=torch.float)
+    else:
+        engine = PtEngine(model_id, max_batch_size=2, use_hf=True,)
+
+
     request_config = RequestConfig(max_tokens=max_new_tokens, temperature=temperature)
 
-    messages = [{"role": "system", "content": "You are a professional anomaly detection and classification tool that detects objects that could prevent an excavator from digging."},
-                {"role": "user", "content": "<image>This is an image of a trench that has been dug by an excavator. Does the trench contain any objects that could hinder excavation? Common examples of anomalies are pipes, cables, wires, tools, large stones and wooden planks. Provide only the english names of the objects that you detect in the trench as a list separated by commas. If you only see objects like a trench, dirt, gravel, part of an excavator or a whole excavator, you ignore them and return an empty list: []"}]
+    # messages = [{"role": "system", "content": "You are a professional anomaly detection and classification tool that detects objects that could prevent an excavator from digging."},
+    #             {"role": "user", "content": "<image>This is an image of a trench that has been dug by an excavator. Does the trench contain any objects that could hinder excavation? Common examples of anomalies are pipes, cables, wires, tools, large stones and wooden planks. Provide only the english names of the objects that you detect in the trench as a list separated by commas. If you only see objects like a trench, dirt, gravel, part of an excavator or a whole excavator, you ignore them and return an empty list: []"}]
+    #
+    # images = ["/home/louis/workspace/Anomaly_Det_VLM/custom/wire1.png"]
 
-    images = ["/home/louis/workspace/Anomaly_Det_VLM/custom/wire1.png"]
+
+    messages = [{"role": "system", "content": "You are a professional airplane classification system."},
+                {"role": "user", "content": "<image>What airplane is this? Choose from these possibilities: Airbus220, Airbus321, Airbus330, Airbus350, Boeing737, Boeing747, Boeing777, Boeing787."}]
+
+    images = ["/home/louis/workspace/Anomaly_Det_VLM/custom/Toronto_23MAY27162713_0.png"]
 
     infer_request = InferRequest(messages=messages, images=images)
 
@@ -77,15 +72,33 @@ def infer():
     print(f'response: {resp_list[0].choices[0].message.content}')
 
 
+def parse_config(config_path):
+    with open(config_path, 'r') as f:
+        config = json.load(f)
+    config['config_path'] = config_path
+    task = config['task']
+    assert task in ["train", "eval"], f"Task needs to be either 'train' or 'eval' but is {task}"
+    model_id = config['model_id']
+    dataset_path = config['dataset_path']
+    prompt = config['prompt']
+    temperature = config['temperature']
+    max_new_tokens = config['max_new_tokens']
+
+    return config
+
+
 if __name__ == "__main__":
 
-    dataset_meta = DatasetMeta(
-        dataset_path=dataset_path,  # Your dataset file
-    )
+    config_path = "/home/louis/workspace/Anomaly_Det_VLM/configs/Qwen2.5-VL-32B-Instruct_conf.json"
+    config = parse_config(config_path)
 
-    register_dataset(dataset_meta)
+    # dataset_meta = DatasetMeta(
+    #     dataset_path=dataset_path,  # Your dataset file
+    # )
+    # register_dataset(dataset_meta)
+    # dataset = load_dataset(dataset_path)
 
-    dataset = load_dataset(dataset_path)  # Load dataset using its path
-    print(dataset[0])  # Check first example
     # infer()
-    train()
+    # train(model_id, dataset_path)
+
+    evaluate.eval(config)
