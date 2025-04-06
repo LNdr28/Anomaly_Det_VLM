@@ -11,7 +11,8 @@ from source.utils import process_images
 
 
 def eval(config):
-    tmp_folder = config.get('tmp_folder', (Path(config['config_path']).parent / "tmp").mkdir(exist_ok=True))
+    tmp_folder = config.get('tmp_folder', (Path(config['config_path']).parent / "tmp"))
+    tmp_folder.mkdir(exist_ok=True)
 
     dataset_path = config['dataset_path']
     model_id = config['model_id']
@@ -22,16 +23,18 @@ def eval(config):
         prompt = prompt.replace("CONF_VAL", str(confidence_threshold))
 
     img_type = config.get('img_type', "default")
+    exclude_stones = config.get('exclude_stones', False)
 
     data_list = []
 
     annotations = json.load(open(dataset_path, "r"))
-    for item in annotations:
+
+    for item in tqdm(annotations, desc="Preprocessing data: "):
         img_id = item["image_id"]
         trench = item["trench"]
         anomalies = item["anomalies_present"]
         img_path = str(Path(dataset_path).parent / img_id)
-        image_path = process_images(img_path, item["trench"], tmp_folder, img_type)
+        image_path = process_images(img_path, trench, tmp_folder, img_type)
 
         messages = [{"role": "system",
                      "content": "You are a professional anomaly detection and classification tool that detects objects that prevent an excavator from digging."},
@@ -43,16 +46,12 @@ def eval(config):
 
 
         data_list.append([messages, images])
-
-    max_new_tokens = config['max_new_tokens']
-    temperature = config['temperature']
-
     if "meta-llama/Llama-3.2" in model_id:
         engine = PtEngine(model_id, max_batch_size=2, use_hf=True, torch_dtype=torch.float)
     else:
         engine = PtEngine(model_id, max_batch_size=2, use_hf=True)
 
-    request_config = RequestConfig(max_tokens=max_new_tokens, temperature=temperature)
+    request_config = RequestConfig(max_tokens=config['max_new_tokens'], temperature=config['temperature'], top_k=config['top_k'])
 
     total_images = 0
     true_pos = 0
@@ -70,7 +69,10 @@ def eval(config):
 
 
         pred_anomaly = 0 if (response in ['[]', '[ ]', 'No', 'no']) else 1
-        gt_anomaly = 0 if (messages[2]['content'] in ['[]', '[ ]', []]) else 1
+        if exclude_stones:
+            gt_anomaly = 0 if (messages[2]['content'] in ['[]', '[ ]', [], '[stone]', '["stone"]', ["stone"], []]) else 1
+        else:
+            gt_anomaly = 0 if (messages[2]['content'] in ['[]', '[ ]', []]) else 1
 
         print(f"pred: {pred_anomaly}; gt: {gt_anomaly}")
 
@@ -88,7 +90,8 @@ def eval(config):
 
     correct = true_neg + true_pos
     accuracy = (correct / total_images) * 100
-    print(f"Accuracy: {accuracy}; TP: {true_pos}; TN: {true_neg}; FP: {false_pos}; FN: {false_neg}")
+    f1 = 2*true_pos / (2*true_pos + false_pos + false_neg)
+    print(f"Accuracy: {accuracy}; F1: {f1}; TP: {true_pos}; TN: {true_neg}; FP: {false_pos}; FN: {false_neg}")
 
     now = datetime.now()
     config['timestamp'] = now.strftime("%d.%m.%Y;%H:%M:%S")
@@ -96,6 +99,7 @@ def eval(config):
     # out_log = Path(output_dir) / (model_id.replace('/', '_') + now.strftime("%d.%m.%Y;%H:%M:%S") + ".log")
     config['results'] = {
         "Accuracy": accuracy,
+        "F1": f1,
         "TP": true_pos,
         "TN": true_neg,
         "FP": false_pos,
@@ -114,3 +118,6 @@ def eval(config):
         # as a list separated by commas. If you only see objects like a trench, dirt, gravel, part of an excavator or
         # a whole excavator, you ignore them and return an empty list ’[]’.")
     os.rmdir(tmp_folder)
+
+
+

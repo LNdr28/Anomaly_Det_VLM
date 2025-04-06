@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import torch
 from swift import Swift, Seq2SeqTrainer, Seq2SeqTrainingArguments
@@ -8,7 +9,13 @@ from swift.llm import get_model_tokenizer, get_template, DatasetMeta, register_d
 from swift import Seq2SeqTrainer
 
 
-def train(model_id, dataset_path, output_dir):
+def train(config):
+    output_dir = config.get('tmp_folder', (Path(config['config_path']).parent / "tmp"))
+    output_dir.mkdir(exist_ok=True)
+
+    dataset_path = config['dataset_path']
+    model_id = config['model_id']
+
     num_proc = 1
     data_seed = 42
 
@@ -17,7 +24,7 @@ def train(model_id, dataset_path, output_dir):
     template = get_template(model.model_meta.template, tokenizer, ...)
 
     # Download and load the dataset, and encode the text into tokens
-    train_dataset, val_dataset = load_dataset(dataset_path)
+    train_dataset, val_dataset = load_dataset(dataset_path, split_dataset_ratio=0.9, seed=data_seed)
     train_dataset = EncodePreprocessor(template=template)(train_dataset, num_proc=num_proc)
     val_dataset = EncodePreprocessor(template=template)(val_dataset, num_proc=num_proc)
 

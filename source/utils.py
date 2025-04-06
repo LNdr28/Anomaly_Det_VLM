@@ -5,7 +5,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 from PIL import ImageEnhance
-from PIL.Image import Image
+from PIL import Image
 
 
 def load_image(img_path, bbox, img_type, saturation=1.0, contrast=1.0, sharpness=1.0, cropped=False, black=False):

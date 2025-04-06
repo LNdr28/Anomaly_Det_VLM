@@ -29,6 +29,8 @@ dataset_id = "gravis-excavation"
 # model_id = "Qwen/Qwen2.5-VL-7B-Instruct"
 # model_id = "Qwen/Qwen2.5-VL-32B-Instruct"
 model_id = "Qwen/Qwen2.5-VL-72B-Instruct"
+
+
 # model_id = "Qwen/Qwen2.5-VL-3B-Instruct-AWQ"   # todo
 # model_id = "Qwen/Qwen2.5-VL-7B-Instruct-AWQ"  # todo
 
@@ -40,7 +42,6 @@ model_id = "Qwen/Qwen2.5-VL-72B-Instruct"
 
 
 def infer():
-
     max_new_tokens = 2048
     temperature = 0.3
     # Perform inference using the native PyTorch engine
@@ -50,19 +51,21 @@ def infer():
     if "meta-llama/Llama-3.2" in model_id:
         engine = PtEngine(model_id, max_batch_size=2, use_hf=True, torch_dtype=torch.float)
     else:
-        engine = PtEngine(model_id, max_batch_size=2, use_hf=True,)
+        engine = PtEngine(model_id, max_batch_size=2, use_hf=True, )
 
-
-    request_config = RequestConfig(max_tokens=max_new_tokens, temperature=temperature)
+    request_config = RequestConfig(max_tokens=max_new_tokens, temperature=temperature, top_k=config['top_k'],
+                                   top_p=config['top_p'], repetition_penalty=config['repetition_penalty'],
+                                   num_beams=config['num_beams'],
+                                   n=config['num_return_sequences'], best_of=config['best_of'])
 
     # messages = [{"role": "system", "content": "You are a professional anomaly detection and classification tool that detects objects that could prevent an excavator from digging."},
     #             {"role": "user", "content": "<image>This is an image of a trench that has been dug by an excavator. Does the trench contain any objects that could hinder excavation? Common examples of anomalies are pipes, cables, wires, tools, large stones and wooden planks. Provide only the english names of the objects that you detect in the trench as a list separated by commas. If you only see objects like a trench, dirt, gravel, part of an excavator or a whole excavator, you ignore them and return an empty list: []"}]
     #
     # images = ["/home/louis/workspace/Anomaly_Det_VLM/custom/wire1.png"]
 
-
     messages = [{"role": "system", "content": "You are a professional airplane classification system."},
-                {"role": "user", "content": "<image>What airplane is this? Choose from these possibilities: Airbus220, Airbus321, Airbus330, Airbus350, Boeing737, Boeing747, Boeing777, Boeing787."}]
+                {"role": "user",
+                 "content": "<image>What airplane is this? Choose from these possibilities: Airbus220, Airbus321, Airbus330, Airbus350, Boeing737, Boeing747, Boeing777, Boeing787."}]
 
     images = ["/home/louis/workspace/Anomaly_Det_VLM/custom/Toronto_23MAY27162713_0.png"]
 
@@ -88,8 +91,7 @@ def parse_config(config_path):
 
 
 if __name__ == "__main__":
-
-    config_path = "/home/louis/workspace/Anomaly_Det_VLM/configs/Qwen2.5-VL-32B-Instruct_conf.json"
+    config_path = "/home/louis/workspace/Anomaly_Det_VLM/configs/Qwen2.5-VL-3B-Instruct_train.json"
     config = parse_config(config_path)
 
     # dataset_meta = DatasetMeta(
@@ -99,6 +101,8 @@ if __name__ == "__main__":
     # dataset = load_dataset(dataset_path)
 
     # infer()
-    # train(model_id, dataset_path)
 
-    evaluate.eval(config)
+    if config['task'] == "eval":
+        evaluate.eval(config)
+    elif config['task'] == "train":
+        train(config)
