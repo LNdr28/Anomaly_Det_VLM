@@ -59,20 +59,29 @@ def eval(config):
     false_neg = 0
     false_pos = 0
 
+    missed_table = {}
+    all_table = {}
+
     for data in tqdm(data_list, desc="Evaluating: "):
         messages = data[0]
         images = data[1]
+        gt = messages[2]['content']
         infer_request = InferRequest(messages=messages[:-1], images=images)
         resp_list = engine.infer([infer_request], request_config)
         response = resp_list[0].choices[0].message.content
-        print(f"response: {response}; GT is {messages[2]['content']}")
+        print(f"response: {response}; GT is {gt}")
+        for obj in gt:
+            if obj not in all_table.keys():
+                all_table[obj] = 1
+            else:
+                all_table[obj] += 1
 
 
         pred_anomaly = 0 if (response in ['[]', '[ ]', 'No', 'no']) else 1
         if exclude_stones:
-            gt_anomaly = 0 if (messages[2]['content'] in ['[]', '[ ]', [], '[stone]', '["stone"]', ["stone"], []]) else 1
+            gt_anomaly = 0 if (gt in ['[]', '[ ]', [], '[stone]', '["stone"]', ["stone"], []]) else 1
         else:
-            gt_anomaly = 0 if (messages[2]['content'] in ['[]', '[ ]', []]) else 1
+            gt_anomaly = 0 if (gt in ['[]', '[ ]', []]) else 1
 
         print(f"pred: {pred_anomaly}; gt: {gt_anomaly}")
 
@@ -83,6 +92,11 @@ def eval(config):
             true_neg += 1
         elif gt_anomaly and not pred_anomaly:
             false_neg += 1
+            for obj in gt:
+                if obj not in missed_table.keys():
+                    missed_table[obj] = 1
+                else:
+                    missed_table[obj] += 1
         elif not gt_anomaly and pred_anomaly:
             false_pos += 1
 
@@ -92,6 +106,8 @@ def eval(config):
     accuracy = (correct / total_images) * 100
     f1 = 2*true_pos / (2*true_pos + false_pos + false_neg)
     print(f"Accuracy: {accuracy}; F1: {f1}; TP: {true_pos}; TN: {true_neg}; FP: {false_pos}; FN: {false_neg}")
+    print(20 * '-')
+    print(f"All GT anomalies: \n{all_table}\n Missed anomalies (FN): \n{missed_table}")
 
     now = datetime.now()
     config['timestamp'] = now.strftime("%d.%m.%Y;%H:%M:%S")
@@ -103,20 +119,15 @@ def eval(config):
         "TP": true_pos,
         "TN": true_neg,
         "FP": false_pos,
-        "FN": false_neg
+        "FN": false_neg,
+        "All_Anomalies": all_table,
+        "Missed_Anomalies": missed_table
     }
     config_path = config['config_path']
     del config['config_path']
     out_log = str(Path(config_path).parent / Path(config_path).name[:-5]) + '_' + now.strftime("%d.%m.%Y;%H:%M:%S") + ".log"
     with open(out_log, 'w') as out_f:
         json.dump(config, out_f, indent=4)
-        # out_f.write(f"Evaluation of model {model_id}\nModel params: ...\nAccuracy: {accuracy}; TP: {true_pos}; TN:
-        # {true_neg}; FP: {false_pos}; FN: {false_neg}\nPrompt: <image>This is an image of a trench that has been dug
-        # by an excavator. You are a professional anomaly detection and classification tool that detects objects that
-        # could prevent an excavator from digging. Common examples of anomalies are pipes, cables, wires, tools,
-        # large stones and wooden planks. Provide only the english names of the objects that you detect in the trench
-        # as a list separated by commas. If you only see objects like a trench, dirt, gravel, part of an excavator or
-        # a whole excavator, you ignore them and return an empty list ’[]’.")
     os.rmdir(tmp_folder)
 
 
