@@ -79,7 +79,7 @@ def eval(config):
 
         pred_anomaly = 0 if (response in ['[]', '[ ]', 'No', 'no']) else 1
         if exclude_stones:
-            gt_anomaly = 0 if (gt in ['[]', '[ ]', [], '[stone]', '["stone"]', ["stone"], []]) else 1
+            gt_anomaly = 0 if (gt in ['[]', '[ ]', [], '[stone]', '["stone"]', ["stone"], '[large stone]', '["large stone"]', ['large stone'], []]) else 1
         else:
             gt_anomaly = 0 if (gt in ['[]', '[ ]', []]) else 1
 
