@@ -1,0 +1,17 @@
+{
+    "task": "eval",
+    "img_type": "crop",
+    "model_id": "meta-llama/Llama-3.2-90B-Vision-Instruct",
+    "dataset_path": "/data/GravisData/ImageDataset/annotations.json",
+    "prompt": "This is an image of a trench that has been dug by an excavator. You are a professional anomaly detection and classification tool that detects objects that could prevent an excavator from digging. Common examples of anomalies are pipes, cables, wires, tools, large stones and wooden planks. Provide only the english names of the objects that you detect in the trench as a list separated by commas. If you only see objects like a trench, dirt, gravel, part of an excavator or a whole excavator, you ignore them and return an empty list: []. Make sure not to miss anything, output anomalies even if you are only CONF_VAL% confident.\n",
+    "confidence_threshold": 50,
+    "ignore_stones": false,
+    "temperature": 0,
+    "max_new_tokens": 16,
+    "top_k": null,
+    "top_p": null,
+    "repetition_penalty": null,
+    "num_beams": 1,
+    "n": 1,
+    "best_of": null
+}
