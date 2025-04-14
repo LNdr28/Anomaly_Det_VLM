@@ -23,11 +23,29 @@ def eval(config):
         prompt = prompt.replace("CONF_VAL", str(confidence_threshold))
 
     img_type = config.get('img_type', "default")
-    exclude_stones = config.get('exclude_stones', False)
+    exclude_stones = config.get('ignore_stones', False)
 
     data_list = []
 
     annotations = json.load(open(dataset_path, "r"))
+
+    if config.get('context', False):
+        context_base = Path(os.getcwd()).parent / "context"
+        context_bucket = str(context_base / "bucket.png")
+        context_stone = str(context_base / "stone.png")
+        context_pipe_plank = str(context_base / "pipe_plank.png")
+        context_images = [context_bucket, context_stone, context_pipe_plank]
+
+        context_messages = [{"role": "system",
+                     "content": "You are a professional anomaly detection and classification tool that detects objects that prevent an excavator from digging. You will be first presented with some example images of the trench and the bucket. Then you will be asked to detect anomalies in the trench."}, {"role": "assistant", "content": ""},
+                    {"role": "user", "content": "<image> This image shows the trench with the excavators bucket. Use the bucket size to check if stones are too big to fit and should count as anomalies."}, {"role": "assistant", "content": ""},
+                    {"role": "user", "content": "<image> This image shows the trench with some objects. Thus the correct output would be [plank, pipe]."}, {"role": "assistant", "content": "[plank, pipe]"},
+                    {"role": "user", "content": "<image> This image shows the trench a stone. The stone is small enough to fit in the bucket, so the correct output would be []."}, {"role": "assistant", "content": "[]"}]
+
+    else:
+        context_messages = [{"role": "system",
+                     "content": "You are a professional anomaly detection and classification tool that detects objects that prevent an excavator from digging."}]
+
 
     for item in tqdm(annotations, desc="Preprocessing data: "):
         img_id = item["image_id"]
@@ -36,13 +54,15 @@ def eval(config):
         img_path = str(Path(dataset_path).parent / img_id)
         image_path = process_images(img_path, trench, tmp_folder, img_type)
 
-        messages = [{"role": "system",
-                     "content": "You are a professional anomaly detection and classification tool that detects objects that prevent an excavator from digging."},
-                    {"role": "user", "content": "<image>"+prompt},
+        messages = context_messages + [{"role": "user", "content": "<image>"+prompt},
                     {"role": "assistant", "content": anomalies}]
 
         # images = [str(Path(dataset_path).parent / img_id)]
-        images = [image_path]
+        if config.get('context', False):
+            images = context_images + [image_path]
+        else:
+            images = [image_path]
+
 
 
         data_list.append([messages, images])
@@ -65,7 +85,7 @@ def eval(config):
     for data in tqdm(data_list, desc="Evaluating: "):
         messages = data[0]
         images = data[1]
-        gt = messages[2]['content']
+        gt = messages[-1]['content']
         infer_request = InferRequest(messages=messages[:-1], images=images)
         resp_list = engine.infer([infer_request], request_config)
         response = resp_list[0].choices[0].message.content
@@ -100,7 +120,7 @@ def eval(config):
         elif not gt_anomaly and pred_anomaly:
             false_pos += 1
 
-        os.remove(images[0])
+        os.remove(images[-1])
 
     correct = true_neg + true_pos
     accuracy = (correct / total_images) * 100
