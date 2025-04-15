@@ -2,11 +2,12 @@ import os
 from pathlib import Path
 
 import torch
-from swift import Swift, Seq2SeqTrainer, Seq2SeqTrainingArguments
+from swift import Swift, Seq2SeqTrainer, Seq2SeqTrainingArguments, LoraConfig
 from swift.llm import get_model_tokenizer, get_template, DatasetMeta, register_dataset, load_dataset, \
     EncodePreprocessor, PtEngine, InferRequest, RequestConfig
 
 from swift import Seq2SeqTrainer
+from swift.utils import find_all_linears
 
 
 def train(config):
@@ -25,6 +26,14 @@ def train(config):
     else:
         model, tokenizer = get_model_tokenizer(model_id, use_hf=True)
     template = get_template(model.model_meta.template, tokenizer)
+
+    lora_rank = 8
+    lora_alpha = 32
+    target_modules = find_all_linears(model)
+    lora_config = LoraConfig(task_type='CAUSAL_LM', r=lora_rank, lora_alpha=lora_alpha,
+                             target_modules=target_modules)
+
+    model = Swift.prepare_model(model, lora_config)
 
     # Download and load the dataset, and encode the text into tokens
     train_dataset, val_dataset = load_dataset(dataset_path, split_dataset_ratio=0.1, seed=data_seed) #, columns={"input": "query", "output": "response"})

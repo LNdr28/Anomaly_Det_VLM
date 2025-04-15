@@ -95,7 +95,7 @@ def parse_config(config_path):
 
 
 if __name__ == "__main__":
-    # config_path = "/home/louis/workspace/Anomaly_Det_VLM/configs/Deepseek-VL-tiny_train.json"
+    # config_path = "/home/louis/workspace/Anomaly_Det_VLM/configs/qwen_test.json"
     # config_path = "/home/louis/workspace/Anomaly_Det_VLM/configs/Qwen2.5-VL-3B-Instruct_train.json"
     config_path = "/home/louis/workspace/Anomaly_Det_VLM/configs/Llama-3.2-VL-1B-Instruct_train.json"
 

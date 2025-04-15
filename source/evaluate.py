@@ -34,7 +34,7 @@ def eval(config):
         context_bucket = str(context_base / "bucket.png")
         context_stone = str(context_base / "stone.png")
         context_pipe_plank = str(context_base / "pipe_plank.png")
-        context_images = [context_bucket, context_stone, context_pipe_plank]
+        context_images = [context_bucket, context_pipe_plank, context_stone]
 
         context_messages = [{"role": "system",
                      "content": "You are a professional anomaly detection and classification tool that detects objects that prevent an excavator from digging. You will be first presented with some example images of the trench and the bucket. Then you will be asked to detect anomalies in the trench."}, {"role": "assistant", "content": ""},
