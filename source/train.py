@@ -2,46 +2,32 @@ import os
 from pathlib import Path
 
 import torch
-from swift import Swift, Seq2SeqTrainer, Seq2SeqTrainingArguments, LoraConfig
-from swift.llm import get_model_tokenizer, get_template, DatasetMeta, register_dataset, load_dataset, \
-    EncodePreprocessor, PtEngine, InferRequest, RequestConfig
 
-from swift import Seq2SeqTrainer
-from swift.utils import find_all_linears
+from swift.llm import get_model_tokenizer, load_dataset, get_template, EncodePreprocessor
+from swift.utils import get_logger, find_all_linears, get_model_parameter_info, plot_images, seed_everything
+from swift.tuners import Swift, LoraConfig
+from swift.trainers import Seq2SeqTrainer, Seq2SeqTrainingArguments
 
 
 def train(config):
-    output_dir = config.get('tmp_folder', (Path(config['config_path']).parent / "tmp"))
-    output_dir.mkdir(exist_ok=True)
+    logger = get_logger()
+    output_dir = config.get('tmp_folder', (Path(config['config_path']).parent / Path(config['config_path']).name.split('.j')[0]))
+    output_dir.mkdir(exist_ok=False)
 
     dataset_path = config['dataset_path']
     model_id = config['model_id']
 
-    num_proc = 1
-    data_seed = 42
+    system = 'You are a helpful assistant.'
 
-    # Retrieve the model and template, and add a trainable LoRA module
-    if "meta-llama/Llama-3.2" in model_id:
-        model, tokenizer = get_model_tokenizer(model_id, use_hf=True, torch_dtype=torch.float)
-    else:
-        model, tokenizer = get_model_tokenizer(model_id, use_hf=True)
-    template = get_template(model.model_meta.template, tokenizer)
+    data_seed = 42
+    max_length = 2048
+    split_dataset_ratio = 0.1
+    num_proc = 4
 
     lora_rank = 8
     lora_alpha = 32
-    target_modules = find_all_linears(model)
-    lora_config = LoraConfig(task_type='CAUSAL_LM', r=lora_rank, lora_alpha=lora_alpha,
-                             target_modules=target_modules)
-
-    model = Swift.prepare_model(model, lora_config)
-
-    # Download and load the dataset, and encode the text into tokens
-    train_dataset, val_dataset = load_dataset(dataset_path, split_dataset_ratio=0.1, seed=data_seed) #, columns={"input": "query", "output": "response"})
-    train_dataset = EncodePreprocessor(template=template)(train_dataset, num_proc=num_proc)
-    val_dataset = EncodePreprocessor(template=template)(val_dataset, num_proc=num_proc)
 
     training_args = Seq2SeqTrainingArguments(
-        train_type="lora",
         output_dir=output_dir,
         learning_rate=1e-4,
         per_device_train_batch_size=1,
@@ -57,15 +43,38 @@ def train(config):
         eval_strategy='steps',
         eval_steps=50,
         gradient_accumulation_steps=16,
-        num_train_epochs=1,
+        num_train_epochs=5,
         metric_for_best_model='loss',
-        save_total_limit=5,
+        save_total_limit=2,
         logging_steps=5,
         dataloader_num_workers=1,
-        data_seed=data_seed
+        data_seed=data_seed,
     )
 
-    # Train the model
+    logger.info(f'output_dir: {output_dir}')
+
+    if "meta-llama/Llama-3.2" in model_id:
+        model, tokenizer = get_model_tokenizer(model_id, use_hf=True, torch_dtype=torch.float)
+    else:
+        model, tokenizer = get_model_tokenizer(model_id, use_hf=True)
+
+    # logger.info(f'model_info: {model.model_info}')
+    template = get_template(model.model_meta.template, tokenizer, default_system=system, max_length=max_length)
+    template.set_mode('train')
+
+    target_modules = find_all_linears(model)
+    lora_config = LoraConfig(task_type='SEQ_2_SEQ_LM', r=lora_rank, lora_alpha=lora_alpha,
+                             target_modules=target_modules)
+    model = Swift.prepare_model(model, lora_config)
+    logger.info(f'lora_config: {lora_config}')
+
+    train_dataset, val_dataset = load_dataset(dataset_path, split_dataset_ratio=split_dataset_ratio, num_proc=num_proc, seed=data_seed)
+    logger.info(f'train_dataset[0]: {train_dataset[0]}')
+    train_dataset = EncodePreprocessor(template=template)(train_dataset, num_proc=num_proc)
+    val_dataset = EncodePreprocessor(template=template)(val_dataset, num_proc=num_proc)
+
+    model.enable_input_require_grads()
+    ...
     trainer = Seq2SeqTrainer(
         model=model,
         args=training_args,
@@ -75,3 +84,6 @@ def train(config):
         template=template,
     )
     trainer.train()
+
+    last_model_checkpoint = trainer.state.last_model_checkpoint
+    logger.info(f'last_model_checkpoint: {last_model_checkpoint}')

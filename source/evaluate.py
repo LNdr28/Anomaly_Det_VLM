@@ -63,13 +63,15 @@ def eval(config):
         else:
             images = [image_path]
 
-
-
         data_list.append([messages, images])
+
+    adapter = config.get('adapter', None)
+    adapter = [adapter] if adapter else None
+
     if "meta-llama/Llama-3.2" in model_id:
-        engine = PtEngine(model_id, max_batch_size=2, use_hf=True, torch_dtype=torch.float)
+        engine = PtEngine(model_id, max_batch_size=2, use_hf=True, adapters=adapter, torch_dtype=torch.float)
     else:
-        engine = PtEngine(model_id, max_batch_size=2, use_hf=True)
+        engine = PtEngine(model_id, max_batch_size=2, use_hf=True, adapters=adapter)
 
     request_config = RequestConfig(max_tokens=config['max_new_tokens'], temperature=config['temperature'], top_k=config['top_k'])
 
