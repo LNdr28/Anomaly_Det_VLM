@@ -32,15 +32,17 @@ def eval(config):
     use_context = config.get('context', False)
 
     if use_context is not False:
-        context_base = Path(os.getcwd()).parent / "context"
+        print('Using (small?) context.')
+        context_base = Path(os.getcwd()) / "context"
         context_bucket = str(context_base / "bucket.png")
         context_images = [context_bucket]
         context_messages = [
                     {"role": "system", "content": "You are a professional anomaly detection and classification tool that detects objects that prevent an excavator from digging. You will be first presented with some example images of the trench and the bucket. Then you will be asked to detect anomalies in the trench."}, {"role": "assistant", "content": ""},
-                    {"role": "user", "content": "<image> This image shows the trench with the excavators bucket. Use the bucket size to check if stones are too big to fit and should count as anomalies."}, {"role": "assistant", "content": ""},
+                    {"role": "user", "content": "<image> This image shows the trench with the excavator's bucket. Use the bucket size to check if stones are too big to fit and should count as anomalies."}, {"role": "assistant", "content": ""},
                     ]
 
-        if use_context == "full" or (use_context and use_context is not "small"):
+        if use_context == "full" or (use_context and use_context != "small"):
+            print('Using full context.')
             context_pipe_plank = str(context_base / "pipe_plank.png")
             context_stone = str(context_base / "stone.png")
             context_images.extend([context_pipe_plank, context_stone])

@@ -51,6 +51,8 @@ def train(config):
         data_seed=data_seed,
     )
 
+    #TODO: epochs
+
     logger.info(f'output_dir: {output_dir}')
 
     if "meta-llama/Llama-3.2" in model_id:
@@ -63,7 +65,7 @@ def train(config):
     template.set_mode('train')
 
     target_modules = find_all_linears(model)
-    lora_config = LoraConfig(task_type='SEQ_2_SEQ_LM', r=lora_rank, lora_alpha=lora_alpha,
+    lora_config = LoraConfig(task_type='CAUSAL_LM', r=lora_rank, lora_alpha=lora_alpha,
                              target_modules=target_modules)
     model = Swift.prepare_model(model, lora_config)
     logger.info(f'lora_config: {lora_config}')
