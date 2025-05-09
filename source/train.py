@@ -17,6 +17,8 @@ def train(config):
     dataset_path = config['dataset_path']
     model_id = config['model_id']
 
+    epochs = config.get('epochs', 1)
+
     system = 'You are a helpful assistant.'
 
     data_seed = 42
@@ -43,7 +45,7 @@ def train(config):
         eval_strategy='steps',
         eval_steps=50,
         gradient_accumulation_steps=16,
-        num_train_epochs=5,
+        num_train_epochs=epochs,
         metric_for_best_model='loss',
         save_total_limit=2,
         logging_steps=5,
