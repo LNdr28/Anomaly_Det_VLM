@@ -16,7 +16,7 @@ def convert_dataset(in_annotations, prompt, output_dir=None, img_type='default')
     annotations = json.load(open(in_annotations, "r"))
     for item in annotations:
         img_id = item["image_id"]
-        img_path = str(Path(in_annotations) / img_id)
+        img_path = str(Path(in_annotations).parent / img_id)
         trench = item["trench"]
         anomalies = item["anomalies_present"]
         trench["image_id"] = img_id

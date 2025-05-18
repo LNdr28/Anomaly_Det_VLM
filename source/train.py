@@ -30,8 +30,8 @@ def train(config):
     split_dataset_ratio = 0.1
     num_proc = 4
 
-    lora_rank = 8
-    lora_alpha = 32
+    lora_rank = config.get('lora_rank', 8)
+    lora_alpha = config.get('lora_alpha', 32)
 
     training_args = Seq2SeqTrainingArguments(
         output_dir=output_dir,
@@ -57,8 +57,6 @@ def train(config):
         data_seed=data_seed,
     )
 
-    #TODO: epochs
-
     logger.info(f'output_dir: {output_dir}')
 
     if "meta-llama/Llama-3.2" in model_id:
@@ -76,7 +74,7 @@ def train(config):
     model = Swift.prepare_model(model, lora_config)
     logger.info(f'lora_config: {lora_config}')
 
-    train_dataset, val_dataset = load_dataset(dataset_path, split_dataset_ratio=split_dataset_ratio, num_proc=num_proc, seed=data_seed)
+    train_dataset, val_dataset = load_dataset(str(dataset_path), split_dataset_ratio=split_dataset_ratio, num_proc=num_proc, seed=data_seed)
     logger.info(f'train_dataset[0]: {train_dataset[0]}')
     train_dataset = EncodePreprocessor(template=template)(train_dataset, num_proc=num_proc)
     val_dataset = EncodePreprocessor(template=template)(val_dataset, num_proc=num_proc)
