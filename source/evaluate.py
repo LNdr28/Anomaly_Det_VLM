@@ -30,10 +30,11 @@ def eval(config):
     annotations = json.load(open(dataset_path, "r"))
 
     use_context = config.get('context', False)
+    context_type = config.get('context_type', "split")
 
-    if use_context is not False:
+    if use_context is not False and context_type == "split":
         print('Using (small?) context.')
-        context_base = Path(os.getcwd()) / "context"
+        context_base = Path(os.getcwd()).parent / "context"
         context_bucket = str(context_base / "bucket.png")
         context_images = [context_bucket]
         context_messages = [
@@ -63,14 +64,24 @@ def eval(config):
         img_path = str(Path(dataset_path).parent / img_id)
         image_path = process_images(img_path, trench, tmp_folder, img_type)
 
-        messages = context_messages + [{"role": "user", "content": "<image>"+prompt},
+        if context_type == 'single-message':
+            if use_context == 'full':
+                raise Exception('not implemented yet')
+            context_base = Path(os.getcwd()).parent / "context"
+            context_bucket = str(context_base / "bucket.png")
+            images = [context_bucket, image_path]
+
+            messages = context_messages + [{"role": "user", "content": "<image> This image shows the trench with the excavator's bucket. Use the bucket size to check if stones are too big to fit and should count as anomalies in the following image. <image>"+prompt},
                     {"role": "assistant", "content": anomalies}]
 
-        # images = [str(Path(dataset_path).parent / img_id)]
-        if config.get('context', False):
-            images = context_images + [image_path]
         else:
-            images = [image_path]
+            messages = context_messages + [{"role": "user",
+                                            "content": "<image>" + prompt},
+                                           {"role": "assistant", "content": anomalies}]
+            if config.get('context', False):
+                images = context_images + [image_path]
+            else:
+                images = [image_path]
 
         data_list.append([messages, images])
 

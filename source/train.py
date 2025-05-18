@@ -1,4 +1,5 @@
 import os
+import shutil
 from pathlib import Path
 
 import torch
@@ -8,13 +9,16 @@ from swift.utils import get_logger, find_all_linears, get_model_parameter_info, 
 from swift.tuners import Swift, LoraConfig
 from swift.trainers import Seq2SeqTrainer, Seq2SeqTrainingArguments
 
+from source.parse_dataset import convert_dataset
+
 
 def train(config):
     logger = get_logger()
     output_dir = config.get('tmp_folder', (Path(config['config_path']).parent / Path(config['config_path']).name.split('.j')[0]))
     output_dir.mkdir(exist_ok=False)
 
-    dataset_path = config['dataset_path']
+    dataset_path = convert_dataset(config['dataset_path'], config['prompt'], output_dir=(output_dir/'dataset'), img_type=config['img_type'])
+
     model_id = config['model_id']
 
     epochs = config.get('epochs', 1)
@@ -91,3 +95,5 @@ def train(config):
 
     last_model_checkpoint = trainer.state.last_model_checkpoint
     logger.info(f'last_model_checkpoint: {last_model_checkpoint}')
+
+    shutil.rmtree(output_dir/'dataset')

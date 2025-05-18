@@ -2,8 +2,10 @@ import argparse
 import json
 from pathlib import Path
 
+from source.utils import process_images
 
-def convert_dataset(in_annotations, prompt, output_dir=None):
+
+def convert_dataset(in_annotations, prompt, output_dir=None, img_type='default'):
 
     if output_dir is not None:
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -14,6 +16,7 @@ def convert_dataset(in_annotations, prompt, output_dir=None):
     annotations = json.load(open(in_annotations, "r"))
     for item in annotations:
         img_id = item["image_id"]
+        img_path = str(Path(in_annotations) / img_id)
         trench = item["trench"]
         anomalies = item["anomalies_present"]
         trench["image_id"] = img_id
@@ -22,16 +25,16 @@ def convert_dataset(in_annotations, prompt, output_dir=None):
         xmax = trench["xmax"]
         ymax = trench["ymax"]
 
-        # line = '{"messages": [{"role": "system", "content": "You are a professional anomaly detection and classification tool that detects objects that could prevent an excavator from digging."}, {"role": "user", "content": "<image>' + prompt + '"}, {"role": "assistant", "content": "' + str(anomalies) + '"}], "images": ["' + str(Path(in_annotations).parent / img_id) + '"], "label": true}' # "' + str(anomalies) + '"}'
+        image_path = process_images(img_path, trench, output_dir, img_type)
 
-        line = '{"input": "<image>' + prompt + '", "label": "' + str(anomalies) + '", "images": ["' + str(Path(in_annotations).parent / img_id) + '"]}'
+        line = '{"messages": [{"role": "system", "content": "You are a professional anomaly detection and classification tool that detects objects that could prevent an excavator from digging."}, {"role": "user", "content": "<image>' + prompt + '"}, {"role": "assistant", "content": "' + str(anomalies) + '"}], "images": ["' + image_path + '"], "label": true}'
 
         out += line + "\n"
 
-    with open(output_dir / "ann_5.jsonl", "w") as f:
+    with open(output_dir / "ann.jsonl", "w") as f:
         f.write(out)
-    # json.dump(out, open(Path(output_dir).parent / "ann_new.json", "w"))
 
+    return output_dir / "ann.jsonl"
 
 
 if __name__ == "__main__":
