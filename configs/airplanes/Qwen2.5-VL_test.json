@@ -1,0 +1,18 @@
+{
+  "task": "eval",
+  "dataset": "airplane",
+  "model_id": "meta-llama/Llama-3.2-90B-Vision-Instruct",
+  "dataset_path": "/data/GravisData/airplanes/val_fair1m",
+  "prompt": "What airplane is this? Choose from these possibilities: Airbus220, Airbus321, Airbus330, Airbus350, Boeing737, Boeing747, Boeing777, Boeing787. Only answer with the name of the airplane.",
+  "temperature": 0,
+  "max_new_tokens": 128,
+  "top_k": null,
+  "top_p": null,
+  "repetition_penalty": null,
+  "num_beams": null,
+  "n": 1,
+  "best_of": null
+}
+
+
+
