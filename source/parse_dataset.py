@@ -5,7 +5,7 @@ from pathlib import Path
 from source.utils import process_images
 
 
-def convert_dataset(in_annotations, prompt, output_dir=None, img_type='default'):
+def convert_dataset(in_annotations, prompt, output_dir=None, img_type='default', ignore_stones=False):
 
     if output_dir is not None:
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -19,6 +19,10 @@ def convert_dataset(in_annotations, prompt, output_dir=None, img_type='default')
         img_path = str(Path(in_annotations).parent / img_id)
         trench = item["trench"]
         anomalies = item["anomalies_present"]
+
+        if ignore_stones:
+            anomalies = [a for a in anomalies if a != "stone"]
+
         trench["image_id"] = img_id
         xmin = trench["xmin"]
         ymin = trench["ymin"]

@@ -17,7 +17,7 @@ def train(config):
     output_dir = config.get('tmp_folder', (Path(config['config_path']).parent / Path(config['config_path']).name.split('.j')[0]))
     output_dir.mkdir(exist_ok=False)
 
-    dataset_path = convert_dataset(config['dataset_path'], config['prompt'], output_dir=(output_dir/'dataset'), img_type=config['img_type'])
+    dataset_path = convert_dataset(config['dataset_path'], config['prompt'], output_dir=(output_dir/'dataset'), img_type=config['img_type'], ignore_stones=config.get('ignore_stones', False))
 
     model_id = config['model_id']
 
