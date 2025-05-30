@@ -1,9 +1,16 @@
+import argparse
+
 from swift.llm import PtEngine, RequestConfig, InferRequest
 
 if __name__ == "__main__":
-    model_id = "deepseek-ai/deepseek-vl2-tiny"
-    prompt = "<image> Describe the image."
-    adapter = None
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--img', type=str, required=True)
+
+    args = parser.parse_args()
+    image = args.img
+
+    model_id = "Qwen/Qwen2.5-VL-3B-Instruct"
+    adapter = ["/ws/Anomaly_Det_VLM/configs/training_splits/Qwen/Qwen2.5-VL-3B-Instruct_train_4_16_nostone/checkpoint-150"]
 
     engine = PtEngine(model_id, max_batch_size=2, use_hf=True, adapters=adapter)
     request_config = RequestConfig(max_tokens=128, temperature=0,
@@ -14,13 +21,10 @@ if __name__ == "__main__":
          "content": "You are a professional anomaly detection and classification tool that detects objects that prevent an excavator from digging. You will be first presented with some example images of the trench and the bucket. Then you will be asked to detect anomalies in the trench."},
         {"role": "assistant", "content": ""},
         {"role": "user",
-         "content": "<image> This image shows the trench with the excavator's bucket. Use the bucket size to check if stones are too big to fit and should count as anomalies."},
-        {"role": "assistant", "content": ""},
-        {"role": "user",
-         "content": "<image> Describe all images you see."},
+         "content": "<image> This is an image of a trench that has been dug by an excavator. You are a professional anomaly detection and classification tool that detects objects that could prevent an excavator from digging. Common examples of anomalies are pipes, cables, wires, tools, large stones and wooden planks. Provide only the english names of the objects that you detect in the trench as a list separated by commas. If you only see objects like a trench, dirt, gravel, part of an excavator or a whole excavator, you ignore them and return an empty list ’[]’. It is more important to not miss an anomaly than detecting a false positive!"},
     ]
 
-    images = ["/home/louis/workspace/Anomaly_Det_VLM/context/bucket.png", "/home/louis/workspace/Anomaly_Det_VLM/0_0.png"]
+    images = [image]
 
     infer_request = InferRequest(messages=messages, images=images)
 

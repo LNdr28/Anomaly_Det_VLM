@@ -17,7 +17,7 @@ def train(config):
     output_dir = config.get('tmp_folder', (Path(config['config_path']).parent / Path(config['config_path']).name.split('.j')[0]))
     output_dir.mkdir(exist_ok=False)
 
-    dataset_path = convert_dataset(config['dataset_path'], config['prompt'], output_dir=(output_dir/'dataset'), img_type=config['img_type'], ignore_stones=config.get('ignore_stones', False))
+    dataset_path = convert_dataset(config['dataset_path'], config['prompt'], output_dir=(output_dir/'dataset'), img_type=config['img_type'], ignore_stones=config.get('ignore_stones', False), dataset_type=config.get('dataset_type', 'old'))
 
     model_id = config['model_id']
 
@@ -32,11 +32,12 @@ def train(config):
 
     lora_rank = config.get('lora_rank', 8)
     lora_alpha = config.get('lora_alpha', 32)
+    per_device_batch_size = config.get('per_device_batch_size', 1)
 
     training_args = Seq2SeqTrainingArguments(
         output_dir=output_dir,
         learning_rate=1e-4,
-        per_device_train_batch_size=1,
+        per_device_train_batch_size=per_device_batch_size,
         per_device_eval_batch_size=1,
         gradient_checkpointing=True,
         weight_decay=0.1,
