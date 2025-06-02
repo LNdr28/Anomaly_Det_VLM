@@ -1,0 +1,22 @@
+{
+  "task": "train",
+  "img_type": "crop",
+  "model_id": "Qwen/Qwen2.5-VL-3B-Instruct",
+  "dataset_path": "/data/GravisData/ImageDataset/train.json",
+  "adapter": "xxxx/ws/Anomaly_Det_VLM/configs/training_splits/Qwen/Qwen2.5-VL-3B-Instruct_train_4_16/checkpoint-150",
+  "prompt": "This is an image of a trench that has been dug by an excavator. You are a professional anomaly detection and classification tool that detects objects that could prevent an excavator from digging. Common examples of anomalies are pipes, cables, wires, tools, large stones and wooden planks. Provide only the english names of the objects that you detect in the trench as a list separated by commas. If you only see objects like a trench, dirt, gravel, part of an excavator or a whole excavator, you ignore them and return an empty list ’[]’. It is more important to not miss an anomaly than detecting a false positive!",
+  "confidence_threshold": 30,
+  "ignore_stones": true,
+  "temperature": 0,
+  "max_new_tokens": 128,
+  "top_k": null,
+  "top_p": null,
+  "repetition_penalty": null,
+  "num_beams": 1,
+  "n": 1,
+  "best_of": null,
+  "epochs": 5,
+  "lora_rank": 4,
+  "lora_alpha": 16
+}
+
