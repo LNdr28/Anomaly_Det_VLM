@@ -47,7 +47,7 @@ def convert_dataset(in_annotations, prompt, output_dir=None, img_type='default',
                 if anomaly == 'large_stone' and ignore_stones:
                     print(f'Ignoring large stones anomaly in {video.name}')
                     continue
-                if anomaly == 'original' or 'stone' in anomaly and ignore_stones:
+                if anomaly == 'original' or ('stone' in anomaly and ignore_stones):
                     anomalies = []
                 else:
                     anomalies = [anomaly]
