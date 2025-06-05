@@ -101,6 +101,11 @@ def eval(config):
     false_neg = 0
     false_pos = 0
 
+    class_true_pos = 0
+    class_true_neg = 0
+    class_false_neg = 0
+    class_false_pos = 0
+
     missed_table = {}
     all_table = {}
 
@@ -132,8 +137,10 @@ def eval(config):
             true_pos += 1
         elif not (gt_anomaly or pred_anomaly):
             true_neg += 1
+            class_true_neg += 1
         elif gt_anomaly and not pred_anomaly:
             false_neg += 1
+            class_false_neg += 1
             for obj in gt:
                 if obj not in missed_table.keys():
                     missed_table[obj] = 1
@@ -141,13 +148,20 @@ def eval(config):
                     missed_table[obj] += 1
         elif not gt_anomaly and pred_anomaly:
             false_pos += 1
+            class_false_pos += 1
+
+        response = response.replace('[', '').replace(']', '').replace('"', '').replace("'", '').replace(' ', '').split(',')
+        gt = gt.replace('[', '').replace(']', '').replace('"', '').replace("'", '').replace(' ', '').split(',')
+        if pred_anomaly and response in gt:
+            class_true_pos += 1
 
         os.remove(images[-1])
 
     correct = true_neg + true_pos
     accuracy = (correct / total_images) * 100
+    class_accuracy = (class_true_pos / total_images) * 100
     f1 = 2*true_pos / (2*true_pos + false_pos + false_neg)
-    print(f"Accuracy: {accuracy}; F1: {f1}; TP: {true_pos}; TN: {true_neg}; FP: {false_pos}; FN: {false_neg}")
+    print(f"Accuracy: {accuracy}; F1: {f1}; Class Accuracy: {class_accuracy}; TP: {true_pos}; TN: {true_neg}; FP: {false_pos}; FN: {false_neg}")
     print(20 * '-')
     print(f"All GT anomalies: \n{all_table}\n Missed anomalies (FN): \n{missed_table}")
 
