@@ -109,6 +109,8 @@ def eval(config):
     missed_table = {}
     all_table = {}
 
+    false_pred_images = {}
+
     for data in tqdm(data_list, desc="Evaluating: "):
         messages = data[0]
         images = data[1]
@@ -139,6 +141,7 @@ def eval(config):
             true_neg += 1
             class_true_neg += 1
         elif gt_anomaly and not pred_anomaly:
+            false_pred_images[images[0].split("/")[-1]] = f'FN: {gt}'
             false_neg += 1
             class_false_neg += 1
             for obj in gt:
@@ -147,19 +150,28 @@ def eval(config):
                 else:
                     missed_table[obj] += 1
         elif not gt_anomaly and pred_anomaly:
+            false_pred_images[images[0].split("/")[-1]] = f'FP: {response}'
             false_pos += 1
-            class_false_pos += 1
 
-        response = response.replace('[', '').replace(']', '').replace('"', '').replace("'", '').replace(' ', '').split(',')
-        gt = gt.replace('[', '').replace(']', '').replace('"', '').replace("'", '').replace(' ', '').split(',')
+        response = response.replace('[', '').replace(']', '').replace('"', '').replace("'", '').replace(' ', '')
+        if response in ['cable', 'wire', 'pipe']:
+            response = 'cable'
+        gt = str(gt).replace('[', '').replace(']', '').replace('"', '').replace("'", '').replace(' ', '').split(',')
+        if 'cable' in gt or 'wire' in gt or 'pipe' in gt or 'cable(buried)' in gt:
+            gt.append('cable')
+        if 'barrierplank' in gt or 'barrier_plank' in gt or 'barrier plank' in gt:
+            gt.append('plank')
+        print(f'gt: {gt}; response: {response}')
         if pred_anomaly and response in gt:
             class_true_pos += 1
+        elif pred_anomaly:
+            class_false_pos += 1
 
         os.remove(images[-1])
 
     correct = true_neg + true_pos
     accuracy = (correct / total_images) * 100
-    class_accuracy = (class_true_pos / total_images) * 100
+    class_accuracy = ((class_true_pos+class_true_neg) / total_images) * 100
     f1 = 2*true_pos / (2*true_pos + false_pos + false_neg)
     print(f"Accuracy: {accuracy}; F1: {f1}; Class Accuracy: {class_accuracy}; TP: {true_pos}; TN: {true_neg}; FP: {false_pos}; FN: {false_neg}")
     print(20 * '-')
@@ -177,8 +189,13 @@ def eval(config):
         "FP": false_pos,
         "FN": false_neg,
         "All_Anomalies": all_table,
-        "Missed_Anomalies": missed_table
+        "Missed_Anomalies": missed_table,
     }
+
+    if config['list_wrong']:
+        print(f"Images with false predictions: \n{false_pred_images}")
+        config['results']['wrong_det'] = false_pred_images
+
     config_path = config['config_path']
     del config['config_path']
     out_log = str(Path(config_path).parent / Path(config_path).name[:-5]) + '_' + now.strftime("%d.%m.%Y;%H:%M:%S") + ".log"
