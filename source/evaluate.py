@@ -1,10 +1,11 @@
 import json
 import os
+import sys
 from pathlib import Path
 from datetime import datetime
 
 import torch
-from swift.llm import PtEngine, RequestConfig, register_dataset, load_dataset, DatasetMeta, InferRequest
+from swift.llm import PtEngine, RequestConfig,  InferRequest
 from tqdm import tqdm
 
 from source.utils import process_images
@@ -39,7 +40,7 @@ def eval(config):
         context_images = [context_bucket]
         context_messages = [
                     {"role": "system", "content": "You are a professional anomaly detection and classification tool that detects objects that prevent an excavator from digging. You will be first presented with some example images of the trench and the bucket. Then you will be asked to detect anomalies in the trench."}, {"role": "assistant", "content": ""},
-                    {"role": "user", "content": "<image> This image shows the trench with the excavator's bucket. Use the bucket size to check if stones are too big to fit and should count as anomalies."}, {"role": "assistant", "content": ""},
+                    {"role": "user", "content": "<image> This image shows the trench without any anomalies"}, {"role": "assistant", "content": ""},
                     ]
 
         if use_context == "full" or (use_context and use_context != "small"):
@@ -93,7 +94,7 @@ def eval(config):
     else:
         engine = PtEngine(model_id, max_batch_size=2, use_hf=True, adapters=adapter)
 
-    request_config = RequestConfig(max_tokens=config['max_new_tokens'], temperature=config['temperature'], top_k=config['top_k'])
+    request_config = RequestConfig(max_tokens=config.get('max_new_tokens', 128), temperature=config['temperature'], top_k=config['top_k'])
 
     total_images = 0
     true_pos = 0
@@ -111,63 +112,68 @@ def eval(config):
 
     false_pred_images = {}
 
-    for data in tqdm(data_list, desc="Evaluating: "):
-        messages = data[0]
-        images = data[1]
-        gt = messages[-1]['content']
-        infer_request = InferRequest(messages=messages[:-1], images=images)
-        resp_list = engine.infer([infer_request], request_config)
-        response = resp_list[0].choices[0].message.content
-        print(f"response: {response}; GT is {gt}")
-        for obj in gt:
-            if obj not in all_table.keys():
-                all_table[obj] = 1
-            else:
-                all_table[obj] += 1
+    with tqdm(data_list, desc="Evaluating: ", leave=True, dynamic_ncols=True) as pbar:
+        for data in pbar:
+            messages = data[0]
+            images = data[1]
+            gt = messages[-1]['content']
+            infer_request = InferRequest(messages=messages[:-1], images=images)
+            resp_list = engine.infer([infer_request], request_config)
+            response = resp_list[0].choices[0].message.content
 
+            msg = f"-------- response: {response}; GT is {gt}"
+            pbar.set_postfix_str(msg)
 
-        pred_anomaly = 0 if (response in ['[]', '[ ]', 'No', 'no']) else 1
-        if exclude_stones:
-            gt_anomaly = 0 if (gt in ['[]', '[ ]', [], '[stone]', '["stone"]', ["stone"], '[large stone]', '["large stone"]', ['large stone'], []]) else 1
-        else:
-            gt_anomaly = 0 if (gt in ['[]', '[ ]', []]) else 1
-
-        print(f"pred: {pred_anomaly}; gt: {gt_anomaly}")
-
-        total_images += 1
-        if gt_anomaly and pred_anomaly:
-            true_pos += 1
-        elif not (gt_anomaly or pred_anomaly):
-            true_neg += 1
-            class_true_neg += 1
-        elif gt_anomaly and not pred_anomaly:
-            false_pred_images[images[0].split("/")[-1]] = f'FN: {gt}'
-            false_neg += 1
-            class_false_neg += 1
             for obj in gt:
-                if obj not in missed_table.keys():
-                    missed_table[obj] = 1
+                if obj not in all_table.keys():
+                    all_table[obj] = 1
                 else:
-                    missed_table[obj] += 1
-        elif not gt_anomaly and pred_anomaly:
-            false_pred_images[images[0].split("/")[-1]] = f'FP: {response}'
-            false_pos += 1
+                    all_table[obj] += 1
 
-        response = response.replace('[', '').replace(']', '').replace('"', '').replace("'", '').replace(' ', '')
-        if response in ['cable', 'wire', 'pipe']:
-            response = 'cable'
-        gt = str(gt).replace('[', '').replace(']', '').replace('"', '').replace("'", '').replace(' ', '').split(',')
-        if 'cable' in gt or 'wire' in gt or 'pipe' in gt or 'cable(buried)' in gt:
-            gt.append('cable')
-        if 'barrierplank' in gt or 'barrier_plank' in gt or 'barrier plank' in gt:
-            gt.append('plank')
-        print(f'gt: {gt}; response: {response}')
-        if pred_anomaly and response in gt:
-            class_true_pos += 1
-        elif pred_anomaly:
-            class_false_pos += 1
 
-        os.remove(images[-1])
+            pred_anomaly = 0 if (response in ['[]', '[ ]', 'No', 'no']) else 1
+            if exclude_stones:
+                gt_anomaly = 0 if (gt in ['[]', '[ ]', [], '[stone]', '["stone"]', ["stone"], '[large stone]', '["large stone"]', ['large stone'], []]) else 1
+            else:
+                gt_anomaly = 0 if (gt in ['[]', '[ ]', []]) else 1
+
+            total_images += 1
+            if gt_anomaly and pred_anomaly:
+                true_pos += 1
+            elif not (gt_anomaly or pred_anomaly):
+                true_neg += 1
+                class_true_neg += 1
+            elif gt_anomaly and not pred_anomaly:
+                false_pred_images[images[0].split("/")[-1]] = f'FN: {gt}'
+                false_neg += 1
+                class_false_neg += 1
+                for obj in gt:
+                    if obj not in missed_table.keys():
+                        missed_table[obj] = 1
+                    else:
+                        missed_table[obj] += 1
+            elif not gt_anomaly and pred_anomaly:
+                false_pred_images[images[0].split("/")[-1]] = f'FP: {response}'
+                false_pos += 1
+
+            response = response.replace('[', '').replace(']', '').replace('"', '').replace("'", '').replace(' ', '')
+            if response in ['cable', 'wire', 'pipe']:
+                response = 'cable'
+            if 'stone' in response:
+                response = 'stone'
+            gt = str(gt).replace('[', '').replace(']', '').replace('"', '').replace("'", '').replace(' ', '').split(',')
+            if 'largestone' in gt or 'smallstone' in gt:
+                gt.append('stone')
+            if 'cable' in gt or 'wire' in gt or 'pipe' in gt or 'cable(buried)' in gt:
+                gt.append('cable')
+            if 'barrierplank' in gt or 'barrier_plank' in gt or 'barrier plank' in gt:
+                gt.append('plank')
+            if pred_anomaly and response in gt:
+                class_true_pos += 1
+            elif pred_anomaly:
+                class_false_pos += 1
+
+            os.remove(images[-1])
 
     correct = true_neg + true_pos
     accuracy = (correct / total_images) * 100
@@ -192,7 +198,7 @@ def eval(config):
         "Missed_Anomalies": missed_table,
     }
 
-    if config['list_wrong']:
+    if config.get('list_wrong', False):
         print(f"Images with false predictions: \n{false_pred_images}")
         config['results']['wrong_det'] = false_pred_images
 
@@ -202,6 +208,3 @@ def eval(config):
     with open(out_log, 'w') as out_f:
         json.dump(config, out_f, indent=4)
     os.rmdir(tmp_folder)
-
-
-

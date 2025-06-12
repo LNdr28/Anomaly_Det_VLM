@@ -1,11 +1,10 @@
-import os
 import shutil
 from pathlib import Path
 
 import torch
 
 from swift.llm import get_model_tokenizer, load_dataset, get_template, EncodePreprocessor
-from swift.utils import get_logger, find_all_linears, get_model_parameter_info, plot_images, seed_everything
+from swift.utils import get_logger, find_all_linears
 from swift.tuners import Swift, LoraConfig
 from swift.trainers import Seq2SeqTrainer, Seq2SeqTrainingArguments
 
@@ -17,7 +16,7 @@ def train(config):
     output_dir = config.get('tmp_folder', (Path(config['config_path']).parent / Path(config['config_path']).name.split('.j')[0]))
     output_dir.mkdir(exist_ok=False)
 
-    dataset_path = convert_dataset(config['dataset_path'], config['prompt'], output_dir=(output_dir/'dataset'), img_type=config['img_type'], ignore_stones=config.get('ignore_stones', False), dataset_type=config.get('dataset_type', 'old'))
+    dataset_path = convert_dataset(config['dataset_path'], config['prompt'], output_dir=(output_dir/'dataset'), img_type=config['img_type'], ignore_stones=config.get('ignore_stones', False), dataset_type=config.get('dataset_type', 'old'), downscale=config.get('downscale', False))
 
     model_id = config['model_id']
 
@@ -65,7 +64,6 @@ def train(config):
     else:
         model, tokenizer = get_model_tokenizer(model_id, use_hf=True)
 
-    # logger.info(f'model_info: {model.model_info}')
     template = get_template(model.model_meta.template, tokenizer, default_system=system, max_length=max_length)
     template.set_mode('train')
 
@@ -81,7 +79,7 @@ def train(config):
     val_dataset = EncodePreprocessor(template=template)(val_dataset, num_proc=num_proc)
 
     model.enable_input_require_grads()
-    ...
+
     trainer = Seq2SeqTrainer(
         model=model,
         args=training_args,
