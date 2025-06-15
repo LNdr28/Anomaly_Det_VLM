@@ -1,6 +1,5 @@
 import json
 import os
-import sys
 from pathlib import Path
 from datetime import datetime
 
@@ -186,7 +185,6 @@ def eval(config):
     now = datetime.now()
     config['timestamp'] = now.strftime("%d.%m.%Y;%H:%M:%S")
 
-    # out_log = Path(output_dir) / (model_id.replace('/', '_') + now.strftime("%d.%m.%Y;%H:%M:%S") + ".log")
     config['results'] = {
         "Accuracy": accuracy,
         "F1": f1,

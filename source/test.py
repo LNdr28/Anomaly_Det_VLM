@@ -5,12 +5,14 @@ from swift.llm import PtEngine, RequestConfig, InferRequest
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--img', type=str, required=True)
+    parser.add_argument('--model_id', type=str, default="meta-llama/Llama-3.2-11B-Vision-Instruct")
+    parser.add_argument('--adapter', type=str, default=None)
 
     args = parser.parse_args()
     image = args.img
 
-    model_id = "Qwen/Qwen2.5-VL-3B-Instruct"
-    adapter = ["/ws/Anomaly_Det_VLM/configs/training_splits/Qwen/Qwen2.5-VL-3B-Instruct_train_4_16_nostone/checkpoint-150"]
+    model_id = args.model_id
+    adapter = args.adapter if args.adapter else []
 
     engine = PtEngine(model_id, max_batch_size=2, use_hf=True, adapters=adapter)
     request_config = RequestConfig(max_tokens=128, temperature=0,

@@ -163,10 +163,10 @@ The evaluation process:
 For testing the model on individual images, use the `test.py` script:
 
 ```
-python -m source.test --img /path/to/your/image.jpg
+python -m source.test --img /path/to/your/image --model_id model_id --adapter /path/to/adapter/
 ```
 
-By default, the script uses the Qwen2.5-VL-3B-Instruct model with a predefined adapter. You can modify the script to use different models or adapters.
+By default, the script uses the meta-llama/Llama-3.2-11B-Vision-Instruct model without an adapter.
 
 ## Project Structure
 
