@@ -3,6 +3,9 @@
 This repository contains code for anomaly detection in excavation trenches using Vision-Language Models (VLMs). The system is designed to identify objects in trenches that may prevent an excavator from digging, such as pipes, cables, large stones, and wooden planks.  
 The code is based on [ms-swift](https://github.com/modelscope/ms-swift).
 
+The [old](https://drive.google.com/drive/folders/15NZNGv4-h_zanTxW0cDFecaNkLQaYkZN) and [new](https://drive.google.com/drive/u/1/folders/1nByhdPW4cibq1d_LXV5WTFjxXhjzDvEu) datasets are available for training and evaluation. 
+
+Model checkpoints for the best performing adapters (LLaMa3.2-Vision-11B, with and without stones as anomalies, trained on synthetic data) are available [here](https://drive.google.com/drive/folders/13du19H5UlN3Zf37UyCv53nFbRWYimsqM?usp=drive_link).
 
 ## Supported Models
 

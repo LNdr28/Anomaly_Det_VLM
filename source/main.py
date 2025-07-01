@@ -1,12 +1,11 @@
 import argparse
 import json
 
-from huggingface_hub import login
-
-login("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")
-
 import evaluate
 from source.train import train
+
+from huggingface_hub import login
+# login("PERSONAL_ACCESS_TOKEN")  # Replace with your actual token, use environment variable or cli login
 
 
 def parse_config(config_path):
